@@ -139,7 +139,7 @@ runTest( int argc, char** argv)
         // custom output handling when no regression test running
         // in this case check if the result is equivalent to the expected soluion
         CUTBoolean res = cutComparef( reference, h_odata, num_threads);
-        printf( "Test %s\n", (1 == res) ? "PASSED" : "FAILED");
+        printf( "jkTest %s\n", (1 == res) ? "PASSED" : "FAILED");
     }
 
     // cleanup memory
