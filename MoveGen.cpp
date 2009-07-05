@@ -20,6 +20,7 @@
 #include "MoveGen.h"
 #include "PreMove.h"
 
+extern void call_vecAdd();
 
 // 棋盤數組和棋子數組
 int Board[256];								// 棋盤數組，表示棋子序號︰0～15，無子; 16～31,黑子; 32～47, 紅子；
@@ -235,7 +236,8 @@ void CMoveGen::UpdateHistoryRecord(unsigned int nMode)
 // 根據Board[256], 產生所有合法的移動︰ Player==-1(黑方), Player==+1(紅方)
 // 移動次序從採用 MVV/LVA(吃子移動) 和 歷史啟發結合，比單獨的歷史啟發快了10%
 int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
-{	
+{
+	call_vecAdd();
 	const unsigned int  k = (1+Player) << 4;	    //k=16,黑棋; k=32,紅棋。
 	unsigned int  move, nSrc, nDst, x, y, nChess;
 	CChessMove* ChessMove = pGenMove;		//移動的計數器
@@ -1563,3 +1565,5 @@ int CMoveGen::CheckEvasionGen(const int Player, int checkers, CChessMove* pGenMo
 	
 	return int(ChessMove-pGenMove);
 }
+
+

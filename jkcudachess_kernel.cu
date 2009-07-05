@@ -10,8 +10,7 @@
 //! @param g_idata  input data in global memory
 //! @param g_odata  output data in global memory
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void
-testKernel( float* g_idata, float* g_odata) 
+__global__ void testKernel( float* g_idata, float* g_odata) 
 {
   // shared memory
   // the size is determined by the host application
@@ -36,4 +35,9 @@ testKernel( float* g_idata, float* g_odata)
   g_odata[tid] = SDATA(tid);
 }
 
+__global__ void vecAdd(float* A,float* B,float* C)
+{
+	int i =blockIdx.x * blockDim.x + threadIdx.x;
+	C[i] = A[i] + B [i];
+}
 #endif // #ifndef _jkcudachess_KERNEL_H_

@@ -19,6 +19,7 @@
 #include <math.h>
 // includes, project
 #include <cutil.h>
+#include <cutil_inline.h>
 // includes, kernels
 #include <jkcudachess_kernel.cu>
 // includes, Binghewusi
@@ -27,9 +28,11 @@
 #include "FenBoard.h"
 #include "Search.h"
 
+void call_vecAdd();
 
 int main(int argc, char* argv[])
 {
+	//call_vecAdd();
 	int n;
 	const char *BoolValue[2] = { "false", "true" };
 	const char *ChessStyle[3] = { "solid", "normal", "risky" };
@@ -381,3 +384,61 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+//呼叫隨機亂數陣列加法測試
+void call_vecAdd()
+{
+	printf("test start");
+
+	unsigned int num_threads = 4088;
+	int  MAX_BLOCKTHREAD=512;
+    unsigned int mem_size = sizeof( float) * num_threads;
+
+	// allocate host memory
+    float* h_idata1 = (float*) malloc( mem_size);
+    // initalize the memory
+    for( unsigned int i = 0; i < num_threads; ++i) 
+    {
+        h_idata1[i] = (float) (rand()%100);
+    }
+	float* h_idata2 = (float*) malloc( mem_size);
+    // initalize the memory
+    for( unsigned int i = 0; i < num_threads; ++i) 
+    {
+        h_idata2[i] = (float) (rand()%100);
+    }
+
+    // allocate device memory
+    float* d_idata1;
+    cutilSafeCall( cudaMalloc( (void**) &d_idata1, mem_size));
+    // copy host memory to device
+    cutilSafeCall( cudaMemcpy( d_idata1, h_idata1, mem_size, cudaMemcpyHostToDevice) );
+    float* d_idata2;
+    cutilSafeCall( cudaMalloc( (void**) &d_idata2, mem_size));
+    // copy host memory to device
+    cutilSafeCall( cudaMemcpy( d_idata2, h_idata2, mem_size, cudaMemcpyHostToDevice) );
+
+    // allocate device memory for result
+    float* d_odata;
+    cutilSafeCall( cudaMalloc( (void**) &d_odata, mem_size));
+
+    // execute the kernel
+	dim3  grid( (( num_threads -1 ) / MAX_BLOCKTHREAD + 1) , 1);
+    dim3  threads( MAX_BLOCKTHREAD , 1);
+    vecAdd<<< grid, threads, mem_size >>>( d_idata1, d_idata2, d_odata);
+
+    // check if kernel execution generated and error
+    cutilCheckMsg("Kernel execution failed");
+
+    // allocate mem for the result on host side
+    float* h_odata = (float*) malloc( mem_size);
+    // copy result from device to host
+    cutilSafeCall( cudaMemcpy( h_odata, d_odata, sizeof( float) * num_threads, cudaMemcpyDeviceToHost) );
+
+	//印出結果
+	for( unsigned int i = 0; i < num_threads; ++i) 
+    {
+        printf("%f + %f = %f \n",h_idata1[i],h_idata2[i],h_odata[i]);
+    }
+
+	system("pause");
+}
