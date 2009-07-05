@@ -29,7 +29,7 @@
 #include "Search.h"
 
 void call_vecAdd();
-
+long movegen_calls=0;
 int main(int argc, char* argv[])
 {
 	//call_vecAdd();
@@ -349,6 +349,8 @@ int main(int argc, char* argv[])
 				// Prepare timer strategy according to "go depth %d" or "go ponder depth %d" command
 				case UCCI_COMM_GO:
 				case UCCI_COMM_GOPONDER:
+					//把movegen_calls歸零
+					movegen_calls=0;
 					switch (Command.Search.utMode)
 					{
 						// 固定深度
@@ -387,6 +389,9 @@ int main(int argc, char* argv[])
 //呼叫隨機亂數陣列加法測試
 void call_vecAdd()
 {
+	movegen_calls++;
+	printf("movegen_calls=%d\n",movegen_calls);
+	/*
 	printf("test start");
 
 	unsigned int num_threads = 4088;
@@ -441,4 +446,5 @@ void call_vecAdd()
     }
 
 	system("pause");
+	*/
 }
