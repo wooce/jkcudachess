@@ -1439,7 +1439,6 @@ void CSearch::PopupInfo(int depth, int score, int Debug)
 	if(depth)
 	{
 		fprintf(OutFile, "info depth %d score %d pv", depth, score);
-		
 		n = nNonCapNum;
 		nPvLineNum = 0;
 		GetPvLine();
