@@ -20,8 +20,7 @@
 #include "MoveGen.h"
 #include "PreMove.h"
 
-extern void call_vecAdd();
-
+extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char vxCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4]);
 // 棋盤數組和棋子數組
 int Board[256];								// 棋盤數組，表示棋子序號︰0～15，無子; 16～31,黑子; 32～47, 紅子；
 int Piece[48];								// 棋子數組，表示棋盤位置︰0, 不在棋盤上; 0x33～0xCC, 對應棋盤位置；	
@@ -205,7 +204,12 @@ CMoveGen::CMoveGen(void)
 
 	// 初始化用于車炮橫向與縱向移動的16位棋盤
 	PreMove.InitBitRookMove(xBitRookMove, yBitRookMove);
-	PreMove.InitBitCannonMove(xBitCannonMove, yBitCannonMove);
+    PreMove.InitBitCannonMove(xBitCannonMove, yBitCannonMove);
+
+    //copy到gpu記憶體裡
+    KingMoves[0][0]=1;
+    KingMoves[0][1]=2;
+    copyPreMoveToGPU(KingMoves,xRookMoves,yRookMoves,xCannonMoves,yCannonMoves,KnightMoves,BishopMoves,GuardMoves,PawnMoves,xRookCapMoves,yRookCapMoves,xCannonCapMoves,yCannonCapMoves);
 }
 
 CMoveGen::~CMoveGen(void)
@@ -237,7 +241,6 @@ void CMoveGen::UpdateHistoryRecord(unsigned int nMode)
 // 移動次序從採用 MVV/LVA(吃子移動) 和 歷史啟發結合，比單獨的歷史啟發快了10%
 int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
 {
-	call_vecAdd();
 	const unsigned int  k = (1+Player) << 4;	    //k=16,黑棋; k=32,紅棋。
 	unsigned int  move, nSrc, nDst, x, y, nChess;
 	CChessMove* ChessMove = pGenMove;		//移動的計數器

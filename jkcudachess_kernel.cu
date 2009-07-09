@@ -5,11 +5,8 @@
 
 #define SDATA( index)      CUT_BANK_CHECKER(sdata, index)
 
-////////////////////////////////////////////////////////////////////////////////
-//! Simple test kernel for device functionality
-//! @param g_idata  input data in global memory
-//! @param g_odata  output data in global memory
-////////////////////////////////////////////////////////////////////////////////
+
+
 __global__ void testKernel( float* g_idata, float* g_odata) 
 {
   // shared memory
@@ -40,4 +37,6 @@ __global__ void vecAdd(float* A,float* B,float* C)
 	int i =blockIdx.x * blockDim.x + threadIdx.x;
 	C[i] = A[i] + B [i];
 }
+
+
 #endif // #ifndef _jkcudachess_KERNEL_H_
