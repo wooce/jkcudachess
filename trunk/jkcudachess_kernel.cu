@@ -37,6 +37,17 @@ __global__ void vecAdd(float* A,float* B,float* C)
 	int i =blockIdx.x * blockDim.x + threadIdx.x;
 	C[i] = A[i] + B [i];
 }
-
-
+//測試把2D記憶體copy過去+1
+__global__ void test2Darray(unsigned char KingMoves[256][8])
+{
+    KingMoves[blockIdx.x][threadIdx.x]+=1;
+}
+//測試把3D記憶體copy過去+1
+__global__ void test3Darray(unsigned char xRookMoves[12][512][12])
+{
+    for(int i=0;i<12;i++)
+    {
+        xRookMoves[i][blockIdx.x][threadIdx.x]+=1;
+    }
+}
 #endif // #ifndef _jkcudachess_KERNEL_H_
