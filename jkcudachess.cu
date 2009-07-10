@@ -28,7 +28,6 @@
 #include "FenBoard.h"
 #include "Search.h"
 
-void call_vecAdd();
 int main(int argc, char* argv[])
 {
     //call_vecAdd();
@@ -445,8 +444,22 @@ void call_vecAdd()
     */
 }
 
+unsigned char * cuda_KingMoves;
+unsigned char * cuda_xRookMoves;
+unsigned char * cuda_yRookMoves;
+unsigned char * cuda_xCannonMoves;
+unsigned char * cuda_yCannonMoves;
+unsigned char * cuda_KnightMoves;
+unsigned char * cuda_BishopMoves;
+unsigned char * cuda_GuardMoves;
+unsigned char * cuda_PawnMoves;
+unsigned char * cuda_xRookCapMoves;
+unsigned char * cuda_yRookCapMoves;
+unsigned char * cuda_xCannonCapMoves;
+unsigned char * cuda_yCannonCapMoves;
+
 //複製展開的走法到GPU的記憶體裡
-extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char vxCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4])
+extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4])
 {
     int MEMSIZE_KingMoves=2048;
     int MEMSIZE_xRookMoves=73728;
@@ -462,31 +475,90 @@ extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char 
     int MEMSIZE_xCannonCapMoves=24576;
     int MEMSIZE_yCannonCapMoves=53248;
 
-    unsigned char * cuda_KingMoves;
     cutilSafeCall(cudaMalloc( (void**) &cuda_KingMoves, MEMSIZE_KingMoves));
     cutilSafeCall(cudaMemcpy( cuda_KingMoves, host_KingMoves, MEMSIZE_KingMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_xRookMoves, MEMSIZE_xRookMoves));
+    cutilSafeCall(cudaMemcpy( cuda_xRookMoves, host_xRookMoves, MEMSIZE_xRookMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_yRookMoves, MEMSIZE_yRookMoves));
+    cutilSafeCall(cudaMemcpy( cuda_yRookMoves, host_yRookMoves, MEMSIZE_yRookMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_xCannonMoves, MEMSIZE_xCannonMoves));
+    cutilSafeCall(cudaMemcpy( cuda_xCannonMoves, host_xCannonMoves, MEMSIZE_xCannonMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_yCannonMoves, MEMSIZE_yCannonMoves));
+    cutilSafeCall(cudaMemcpy( cuda_yCannonMoves, host_yCannonMoves, MEMSIZE_yCannonMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_KnightMoves, MEMSIZE_KnightMoves));
+    cutilSafeCall(cudaMemcpy( cuda_KnightMoves, host_KnightMoves, MEMSIZE_KnightMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_BishopMoves, MEMSIZE_BishopMoves));
+    cutilSafeCall(cudaMemcpy( cuda_BishopMoves, host_BishopMoves, MEMSIZE_BishopMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_GuardMoves, MEMSIZE_GuardMoves));
+    cutilSafeCall(cudaMemcpy( cuda_GuardMoves, host_GuardMoves, MEMSIZE_GuardMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_PawnMoves, MEMSIZE_PawnMoves));
+    cutilSafeCall(cudaMemcpy( cuda_PawnMoves, host_PawnMoves, MEMSIZE_PawnMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_xRookCapMoves, MEMSIZE_xRookCapMoves));
+    cutilSafeCall(cudaMemcpy( cuda_xRookCapMoves, host_xRookCapMoves, MEMSIZE_xRookCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_yRookCapMoves, MEMSIZE_yRookCapMoves));
+    cutilSafeCall(cudaMemcpy( cuda_yRookCapMoves, host_yRookCapMoves, MEMSIZE_yRookCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_xCannonCapMoves, MEMSIZE_xCannonCapMoves));
+    cutilSafeCall(cudaMemcpy( cuda_xCannonCapMoves, host_xCannonCapMoves, MEMSIZE_xCannonCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_yCannonCapMoves, MEMSIZE_yCannonCapMoves));
+    cutilSafeCall(cudaMemcpy( cuda_yCannonCapMoves, host_yCannonCapMoves, MEMSIZE_yCannonCapMoves, cudaMemcpyHostToDevice));
 
-    unsigned char * check_KingMoves=(unsigned char*) malloc(MEMSIZE_KingMoves);;
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //test2Darray
+    // execute the kernel
+    test2Darray<<< 256, 8 >>>((unsigned char (*)[8])cuda_KingMoves);
     //copy出來檢查一下
-    cutilSafeCall(cudaMemcpy( check_KingMoves, cuda_KingMoves, MEMSIZE_KingMoves, cudaMemcpyDeviceToHost));
-
+    unsigned char check_KingMoves[256][8];
+    cutilSafeCall(cudaMemcpy( check_KingMoves, cuda_KingMoves, MEMSIZE_KingMoves, cudaMemcpyDeviceToHost)); 
     for(int i=0;i<256;i++)
     {
         printf("%d ",i);
         for(int j=0;j<8;j++)
         {
-            printf("%d",host_KingMoves[i][j]);
+            printf("%d_",host_KingMoves[i][j]);
         }
         printf("\n");
     }
-    printf("device memory:\n");
+    printf("2D device memory:\n");
     for(int i=0;i<256;i++)
     {
         printf("%d ",i);
         for(int j=0;j<8;j++)
         {
-            printf("%d",check_KingMoves[i*8+j]);
+            printf("%d_",check_KingMoves[i][j]);
         }
         printf("\n");
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //test3Darray
+    // execute the kernel
+    test3Darray<<< 512, 12 >>>((unsigned char (*)[512][12])cuda_xRookMoves);
+    //copy出來檢查一下
+    unsigned char check_xRookMoves[12][512][12];
+    cutilSafeCall(cudaMemcpy( check_xRookMoves, cuda_xRookMoves, MEMSIZE_xRookMoves, cudaMemcpyDeviceToHost)); 
+    for(int i=0;i<12;i++)
+    {
+        for(int j=0;j<512;j++)
+        {
+            printf("[%d][%d] ",i,j);
+            for(int k=0;k<12;k++)
+            {
+                printf("%d_",host_xRookMoves[i][j][k]);
+            }
+            printf("\n");
+        }       
+    }
+    printf("3D device memory:\n");
+    for(int i=0;i<12;i++)
+    {
+        for(int j=0;j<512;j++)
+        {
+            printf("[%d][%d] ",i,j);
+            for(int k=0;k<12;k++)
+            {
+                printf("%d_",check_xRookMoves[i][j][k]);
+            }
+            printf("\n");
+        }       
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
