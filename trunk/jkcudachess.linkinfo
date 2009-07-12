@@ -1,1 +1,1 @@
- --import %laneid,%ctaid,%nctaid,sdata,%smid,A7,%pm3,%pm2,%pm1,__CC-temp__0__,%pm0,%tid,%clock,%warpid,%ntid,%gridid --export _Z11test2DarrayPA8_h,_Z10testKernelPfS_,_Z6vecAddPfS_S_,_Z11test3DarrayPA512_A12_h
+ --import %laneid,%ctaid,%nctaid,sdata,%smid,A7,%pm3,%pm2,%pm1,__CC-temp__0__,%pm0,%tid,%clock,%warpid,%ntid,%gridid --export _Z10testKernelPfS_,_Z6vecAddPfS_S_,_Z11cudaMoveGenjPjPA8_hPA512_A12_hPA1024_S2_S4_S6_PS2_S1_S1_PA256_A4_hPA512_S8_PA1024_S8_SC_SE_

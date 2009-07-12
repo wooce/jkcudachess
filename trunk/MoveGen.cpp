@@ -16,11 +16,11 @@
 // 6. 將軍檢測Checked(Player), Checking(1-Player)                                                         //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 #include "MoveGen.h"
 #include "PreMove.h"
 
 extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4]);
+extern void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int * &ChessMove,unsigned short HistoryRecord[65535]);
 // 棋盤數組和棋子數組
 int Board[256];								// 棋盤數組，表示棋子序號︰0～15，無子; 16～31,黑子; 32～47, 紅子；
 int Piece[48];								// 棋子數組，表示棋盤位置︰0, 不在棋盤上; 0x33～0xCC, 對應棋盤位置；	
@@ -243,25 +243,26 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
 	unsigned int  move, nSrc, nDst, x, y, nChess;
 	CChessMove* ChessMove = pGenMove;		//移動的計數器
 	unsigned char *pMove;
-							
+	
+    call_cudaMoveGen(k,Board,Piece,ChessMove,HistoryRecord);
+    //
 	// 產生將帥的移動********************************************************************************************
 	nChess = k;
-	nSrc = Piece[nChess];								// 將帥存在︰nSrc!=0
-	{
-		pMove = KingMoves[nSrc];
-		while( *pMove )
-		{
-			nDst = *(pMove++);
-			if( !Board[nDst] )
-			{
-				move = (nSrc<<8) | nDst;
-				*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-			}
-		}
-	}
+	//nSrc = Piece[nChess];								// 將帥存在︰nSrc!=0
+	//{
+	//	pMove = KingMoves[nSrc];
+	//	while( *pMove )
+	//	{
+	//		nDst = *(pMove++);
+	//		if( !Board[nDst] )
+	//		{
+	//			move = (nSrc<<8) | nDst;
+	//			*(ChessMove++) = (HistoryRecord[move]<<16) | move;
+	//		}
+	//	}
+	//}
 	nChess ++;
-
-
+    
 	// 產生車的移動************************************************************************************************
 	for( ; nChess<=k+2; nChess++)
 	{
