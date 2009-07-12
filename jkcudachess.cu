@@ -458,8 +458,11 @@ unsigned char * cuda_yRookCapMoves;
 unsigned char * cuda_xCannonCapMoves;
 unsigned char * cuda_yCannonCapMoves;
 
-//複製展開的走法到GPU的記憶體裡
-extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4])
+__constant__ int cuda_Board[256];//256*4=1024
+__constant__ int cuda_Piece[48];//48*4=192
+
+//複製PreMoveGen展開的走法到GPU的記憶體裡
+void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4])
 {
     int MEMSIZE_KingMoves=2048;
     int MEMSIZE_xRookMoves=73728;
@@ -502,63 +505,58 @@ extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char 
     cutilSafeCall(cudaMalloc( (void**) &cuda_yCannonCapMoves, MEMSIZE_yCannonCapMoves));
     cutilSafeCall(cudaMemcpy( cuda_yCannonCapMoves, host_yCannonCapMoves, MEMSIZE_yCannonCapMoves, cudaMemcpyHostToDevice));
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //test2Darray
-    // execute the kernel
-    test2Darray<<< 256, 8 >>>((unsigned char (*)[8])cuda_KingMoves);
-    //copy出來檢查一下
-    unsigned char check_KingMoves[256][8];
-    cutilSafeCall(cudaMemcpy( check_KingMoves, cuda_KingMoves, MEMSIZE_KingMoves, cudaMemcpyDeviceToHost)); 
-    for(int i=0;i<256;i++)
+    printf("size of float %d\n",sizeof(float));
+    printf("size of int %d\n",sizeof(int));
+    printf("size of char %d\n",sizeof(char));
+    printf("size of short %d\n",sizeof(short));
+}
+//cuda MoveGen主體
+#define WRITE_2_CUDA_MOVE if(nDst&&!cuda_Board[nDst]){cuda_move[tid]=(nSrc<<8)|nDst;}else{cuda_move[tid]=0;}
+__global__ void cudaMoveGen(const unsigned int nChess,unsigned int* cuda_move,unsigned char cuda_KingMoves[256][8],unsigned char cuda_xRookMoves[12][512][12],unsigned char cuda_yRookMoves[13][1024][12],unsigned char cuda_xCannonMoves[12][512][12],unsigned char cuda_yCannonMoves[13][1024][12],unsigned char cuda_KnightMoves[256][12],unsigned char cuda_BishopMoves[256][8],unsigned char cuda_GuardMoves[256][8],unsigned char cuda_PawnMoves[2][256][4],unsigned char cuda_xRookCapMoves[12][512][4],unsigned char cuda_yRookCapMoves[13][1024][4],unsigned char cuda_xCannonCapMoves[12][512][4],unsigned char cuda_yCannonCapMoves[13][1024][4])
+{
+    int tid=blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int  move, nSrc, nDst;
+    unsigned char *pMove;
+    //0~7 將帥 
+    if(tid<8)
     {
-        printf("%d ",i);
-        for(int j=0;j<8;j++)
+        nSrc = cuda_Piece[nChess];// 將帥存在︰nSrc!=0
         {
-            printf("%d_",host_KingMoves[i][j]);
+            nDst = cuda_KingMoves[nSrc][tid];
+            WRITE_2_CUDA_MOVE;
         }
-        printf("\n");
     }
-    printf("2D device memory:\n");
-    for(int i=0;i<256;i++)
+}
+
+//呼叫cuda_MoveGen
+void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
+{
+    int numOfThreads=8;
+    unsigned int* cuda_move;//配置GPU存放結果的記憶體
+    cutilSafeCall(cudaMalloc( (void**) &cuda_move, 4*numOfThreads));
+    //把棋盤當前狀態Board[256]和Piece[48] copy進去
+    cutilSafeCall(cudaMemcpyToSymbol(cuda_Board,Board,1024));
+    cutilSafeCall(cudaMemcpyToSymbol(cuda_Piece,Piece,192));
+
+    cudaMoveGen<<<1,8>>>(nChess,cuda_move,(unsigned char (*)[8])cuda_KingMoves,(unsigned char (*)[512][12])cuda_xRookMoves,(unsigned char (*)[1024][12])cuda_yRookMoves,(unsigned char (*)[512][12])cuda_xCannonMoves,(unsigned char (*)[1024][12])cuda_yCannonMoves,(unsigned char (*)[12])cuda_KnightMoves,(unsigned char (*)[8])cuda_BishopMoves,(unsigned char (*)[8])cuda_GuardMoves,(unsigned char (*)[256][4])cuda_PawnMoves,(unsigned char (*)[512][4])cuda_xRookCapMoves,(unsigned char (*)[1024][4])cuda_yRookCapMoves,(unsigned char (*)[512][4])cuda_xCannonCapMoves,(unsigned char (*)[1024][4])cuda_yCannonCapMoves);
+
+    //把結果copy出來
+    unsigned int host_move[8];
+    cutilSafeCall(cudaMemcpy( host_move, cuda_move, 4*numOfThreads, cudaMemcpyDeviceToHost)); 
+    //印出來檢驗
+    //for(int i=0;i<numOfThreads;i++)
+    //{
+    //    printf("%d : %u\n",i,host_move[i]);
+    //}
+
+    //釋放顯示卡記憶體
+    cudaFree(cuda_move);
+
+    for(int i=0;i<numOfThreads;i++)
     {
-        printf("%d ",i);
-        for(int j=0;j<8;j++)
+        if(host_move[i])
         {
-            printf("%d_",check_KingMoves[i][j]);
+            *(ChessMove++) = (HistoryRecord[host_move[i]]<<16) | host_move[i];
         }
-        printf("\n");
     }
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //test3Darray
-    // execute the kernel
-    test3Darray<<< 512, 12 >>>((unsigned char (*)[512][12])cuda_xRookMoves);
-    //copy出來檢查一下
-    unsigned char check_xRookMoves[12][512][12];
-    cutilSafeCall(cudaMemcpy( check_xRookMoves, cuda_xRookMoves, MEMSIZE_xRookMoves, cudaMemcpyDeviceToHost)); 
-    for(int i=0;i<12;i++)
-    {
-        for(int j=0;j<512;j++)
-        {
-            printf("[%d][%d] ",i,j);
-            for(int k=0;k<12;k++)
-            {
-                printf("%d_",host_xRookMoves[i][j][k]);
-            }
-            printf("\n");
-        }       
-    }
-    printf("3D device memory:\n");
-    for(int i=0;i<12;i++)
-    {
-        for(int j=0;j<512;j++)
-        {
-            printf("[%d][%d] ",i,j);
-            for(int k=0;k<12;k++)
-            {
-                printf("%d_",check_xRookMoves[i][j][k]);
-            }
-            printf("\n");
-        }       
-    }
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
