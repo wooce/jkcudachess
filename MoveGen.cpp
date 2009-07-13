@@ -16,11 +16,12 @@
 // 6. 將軍檢測Checked(Player), Checking(1-Player)                                                         //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "stdio.h"
 #include "MoveGen.h"
 #include "PreMove.h"
 
 extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4]);
-extern void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int * &ChessMove,unsigned short HistoryRecord[65535]);
+extern void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535]);
 // 棋盤數組和棋子數組
 int Board[256];								// 棋盤數組，表示棋子序號︰0～15，無子; 16～31,黑子; 32～47, 紅子；
 int Piece[48];								// 棋子數組，表示棋盤位置︰0, 不在棋盤上; 0x33～0xCC, 對應棋盤位置；	
@@ -239,182 +240,190 @@ void CMoveGen::UpdateHistoryRecord(unsigned int nMode)
 // 移動次序從採用 MVV/LVA(吃子移動) 和 歷史啟發結合，比單獨的歷史啟發快了10%
 int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
 {
-	const unsigned int  k = (1+Player) << 4;	    //k=16,黑棋; k=32,紅棋。
-	unsigned int  move, nSrc, nDst, x, y, nChess;
-	CChessMove* ChessMove = pGenMove;		//移動的計數器
-	unsigned char *pMove;
-	
-    call_cudaMoveGen(k,Board,Piece,ChessMove,HistoryRecord);
+    const unsigned int  k = (1+Player) << 4;	    //k=16,黑棋; k=32,紅棋。
+    CChessMove* ChessMove = pGenMove;		//移動的計數器
+    //unsigned int  move, nSrc, nDst, x, y, nChess;
+    //unsigned char *pMove;
+
+    call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove,HistoryRecord);
+    /*
     //
-	// 產生將帥的移動********************************************************************************************
-	nChess = k;
-	//nSrc = Piece[nChess];								// 將帥存在︰nSrc!=0
-	//{
-	//	pMove = KingMoves[nSrc];
-	//	while( *pMove )
-	//	{
-	//		nDst = *(pMove++);
-	//		if( !Board[nDst] )
-	//		{
-	//			move = (nSrc<<8) | nDst;
-	//			*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-	//		}
-	//	}
-	//}
-	nChess ++;
-    
-	// 產生車的移動************************************************************************************************
-	for( ; nChess<=k+2; nChess++)
-	{
-		if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
-		{			
-			x = nSrc & 0xF;								// 后4位有效
-			y = nSrc >> 4;								// 前4位有效
+    // 產生將帥的移動********************************************************************************************
+    nChess = k;
+    nSrc = Piece[nChess];								// 將帥存在︰nSrc!=0
+    {
+        pMove = KingMoves[nSrc];
+        while( *pMove )
+        {
+            nDst = *(pMove++);
+            if( !Board[nDst] )
+            {
+                move = (nSrc<<8) | nDst;
+                *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+            }
+        }
+    }
+    nChess ++;
 
-			//車的橫向移動︰
-			pMove = xRookMoves[x][xBitBoard[y]];
-			while( *pMove )
-			{
-				nDst = (nSrc & 0xF0) | (*(pMove++));	// 0x y|x  前4位=y*16， 后4位=x
-				if( !Board[nDst] )
-				{
-					move = (nSrc<<8) | nDst;
-					*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-				}
-			}
+    // 產生車的移動************************************************************************************************
+    for( ; nChess<=k+2; nChess++)
+    {
+        if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
+        {			
+            x = nSrc & 0xF;								// 后4位有效
+            y = nSrc >> 4;								// 前4位有效
 
-			//車的縱向移動
-			pMove = yRookMoves[y][yBitBoard[x]];
-			while( *pMove )
-			{
-				nDst = (*(pMove++)) | x;				// 0x y|x  前4位=y*16， 后4位=x
-				if( !Board[nDst] )
-				{
-					move = (nSrc<<8) | nDst;
-					*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-				}
-			}
-		}
-	}
+            //車的橫向移動︰
+            pMove = xRookMoves[x][xBitBoard[y]];
+            while( *pMove )
+            {
+                nDst = (nSrc & 0xF0) | (*(pMove++));	// 0x y|x  前4位=y*16， 后4位=x
+                if( !Board[nDst] )
+                {
+                    move = (nSrc<<8) | nDst;
+                    *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                }
+            }
 
-
-	// 產生炮的移動************************************************************************************************
-	for( ; nChess<=k+4; nChess++)
-	{
-		if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
-		{			
-			x = nSrc & 0xF;								// 后4位有效
-			y = nSrc >> 4;								// 前4位有效
-
-			//炮的橫向移動
-			pMove = xCannonMoves[x][xBitBoard[y]];
-			while( *pMove )
-			{
-				nDst = (nSrc & 0xF0) | (*(pMove++));	// 0x y|x  前4位=y*16， 后4位=x
-				if( !Board[nDst] )
-				{
-					move = (nSrc<<8) | nDst;
-					*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-				}
-			}
-
-			//炮的縱向移動
-			pMove = yCannonMoves[y][yBitBoard[x]];
-			while( *pMove )
-			{
-				nDst = (*(pMove++)) | x;		// 0x y|x  前4位=y*16， 后4位=x	
-				if( !Board[nDst] )
-				{
-					move = (nSrc<<8) | nDst;
-					*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-				}
-			}
-		}
-	}
+            //車的縱向移動
+            pMove = yRookMoves[y][yBitBoard[x]];
+            while( *pMove )
+            {
+                nDst = (*(pMove++)) | x;				// 0x y|x  前4位=y*16， 后4位=x
+                if( !Board[nDst] )
+                {
+                    move = (nSrc<<8) | nDst;
+                    *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                }
+            }
+        }
+    }
 
 
-	// 產生馬的移動******************************************************************************************
-	for( ; nChess<=k+6; nChess++)
-	{
-		if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
-		{
-			pMove = KnightMoves[nSrc];
-			while( *pMove )
-			{
-				nDst = *(pMove++);
-				if( !Board[nSrc+nHorseLegTab[nDst-nSrc+256]] )
-				{					
-					if( !Board[nDst] )
-					{
-						move = (nSrc<<8) | nDst;
-						*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-					}
-				}
-			}
-		}
-	}
+    // 產生炮的移動************************************************************************************************
+    for( ; nChess<=k+4; nChess++)
+    {
+        if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
+        {			
+            x = nSrc & 0xF;								// 后4位有效
+            y = nSrc >> 4;								// 前4位有效
+
+            //炮的橫向移動
+            pMove = xCannonMoves[x][xBitBoard[y]];
+            while( *pMove )
+            {
+                nDst = (nSrc & 0xF0) | (*(pMove++));	// 0x y|x  前4位=y*16， 后4位=x
+                if( !Board[nDst] )
+                {
+                    move = (nSrc<<8) | nDst;
+                    *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                }
+            }
+
+            //炮的縱向移動
+            pMove = yCannonMoves[y][yBitBoard[x]];
+            while( *pMove )
+            {
+                nDst = (*(pMove++)) | x;		// 0x y|x  前4位=y*16， 后4位=x	
+                if( !Board[nDst] )
+                {
+                    move = (nSrc<<8) | nDst;
+                    *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                }
+            }
+        }
+    }
 
 
-	// 產生象的移動******************************************************************************************
-	for( ; nChess<=k+8; nChess++)
-	{
-		if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
-		{
-			pMove = BishopMoves[nSrc];
-			while( *pMove )
-			{
-				nDst = *(pMove++);
-				if( !Board[(nSrc+nDst)>>1] )				//象眼無子
-				{
-					if( !Board[nDst] )
-					{
-						move = (nSrc<<8) | nDst;
-						*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-					}
-				}
-			}
-		}
-	}
+    // 產生馬的移動******************************************************************************************
+    for( ; nChess<=k+6; nChess++)
+    {
+        if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
+        {
+            pMove = KnightMoves[nSrc];
+            while( *pMove )
+            {
+                nDst = *(pMove++);
+                if( !Board[nSrc+nHorseLegTab[nDst-nSrc+256]] )
+                {					
+                    if( !Board[nDst] )
+                    {
+                        move = (nSrc<<8) | nDst;
+                        *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                    }
+                }
+            }
+        }
+    }
 
 
-	// 產生士的移動******************************************************************************************
-	for( ; nChess<=k+10; nChess++)
-	{
-		if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
-		{
-			pMove = GuardMoves[nSrc];
-			while( *pMove )
-			{
-				nDst = *(pMove++);
-				if( !Board[nDst] )
-				{
-					move = (nSrc<<8) | nDst;
-					*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-				}
-			}
-		}
-	}
+    // 產生象的移動******************************************************************************************
+    for( ; nChess<=k+8; nChess++)
+    {
+        if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
+        {
+            pMove = BishopMoves[nSrc];
+            while( *pMove )
+            {
+                nDst = *(pMove++);
+                if( !Board[(nSrc+nDst)>>1] )				//象眼無子
+                {
+                    if( !Board[nDst] )
+                    {
+                        move = (nSrc<<8) | nDst;
+                        *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                    }
+                }
+            }
+        }
+    }
 
 
-	// 產生兵卒的移動******************************************************************************************
-	for( ; nChess<=k+15; nChess++)
-	{
-		if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
-		{
-			pMove = PawnMoves[Player][nSrc];
-			while( *pMove )
-			{
-				nDst = *(pMove++);
-				if( !Board[nDst] )
-				{
-					move = (nSrc<<8) | nDst;
-					*(ChessMove++) = (HistoryRecord[move]<<16) | move;
-				}
-			}
-		}
-	}
+    // 產生士的移動******************************************************************************************
+    for( ; nChess<=k+10; nChess++)
+    {
+        if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
+        {
+            pMove = GuardMoves[nSrc];
+            while( *pMove )
+            {
+                nDst = *(pMove++);
+                if( !Board[nDst] )
+                {
+                    move = (nSrc<<8) | nDst;
+                    *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                }
+            }
+        }
+    }
 
-	return int(ChessMove-pGenMove);
+
+    // 產生兵卒的移動******************************************************************************************
+    for( ; nChess<=k+15; nChess++)
+    {
+        if( nSrc = Piece[nChess] )						// 棋子存在︰nSrc!=0
+        {
+            pMove = PawnMoves[Player][nSrc];
+            while( *pMove )
+            {
+                nDst = *(pMove++);
+                if( !Board[nDst] )
+                {
+                    move = (nSrc<<8) | nDst;
+                    *(ChessMove++) = (HistoryRecord[move]<<16) | move;
+                }
+            }
+        }
+    }
+    */
+
+    //檢查移動計數器
+    //for(int i=0;i<(ChessMove-pGenMove);i++)
+    //{
+    //    printf("%d : %u\n",i,pGenMove[i]);
+    //}
+
+    return int(ChessMove-pGenMove);
 }
 
 

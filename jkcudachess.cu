@@ -458,9 +458,45 @@ unsigned char * cuda_yRookCapMoves;
 unsigned char * cuda_xCannonCapMoves;
 unsigned char * cuda_yCannonCapMoves;
 
+__constant__ unsigned int cuda_xBitBoard[16];//16*4=64
+__constant__ unsigned int cuda_yBitBoard[16];//16*4=64
 __constant__ int cuda_Board[256];//256*4=1024
 __constant__ int cuda_Piece[48];//48*4=192
-
+__constant__ char cuda_nHorseLegTab[512] = {// 馬腿增量表
+    0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,-16,  0,-16,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0, -1,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0, -1,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0, 16,  0, 16,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0
+};
 //複製PreMoveGen展開的走法到GPU的記憶體裡
 void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4])
 {
@@ -511,37 +547,152 @@ void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xR
     printf("size of short %d\n",sizeof(short));
 }
 //cuda MoveGen主體
-#define WRITE_2_CUDA_MOVE if(nDst&&!cuda_Board[nDst]){cuda_move[tid]=(nSrc<<8)|nDst;}else{cuda_move[tid]=0;}
-__global__ void cudaMoveGen(const unsigned int nChess,unsigned int* cuda_move,unsigned char cuda_KingMoves[256][8],unsigned char cuda_xRookMoves[12][512][12],unsigned char cuda_yRookMoves[13][1024][12],unsigned char cuda_xCannonMoves[12][512][12],unsigned char cuda_yCannonMoves[13][1024][12],unsigned char cuda_KnightMoves[256][12],unsigned char cuda_BishopMoves[256][8],unsigned char cuda_GuardMoves[256][8],unsigned char cuda_PawnMoves[2][256][4],unsigned char cuda_xRookCapMoves[12][512][4],unsigned char cuda_yRookCapMoves[13][1024][4],unsigned char cuda_xCannonCapMoves[12][512][4],unsigned char cuda_yCannonCapMoves[13][1024][4])
+#define WRITE_2_CUDA_MOVE if(pMove&&nSrc&&nDst&&!cuda_Board[nDst]){cuda_move[tid]=(nSrc<<8)|nDst;}else{cuda_move[tid]=0;}
+__global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigned char cuda_KingMoves[256][8],unsigned char cuda_xRookMoves[12][512][12],unsigned char cuda_yRookMoves[13][1024][12],unsigned char cuda_xCannonMoves[12][512][12],unsigned char cuda_yCannonMoves[13][1024][12],unsigned char cuda_KnightMoves[256][12],unsigned char cuda_BishopMoves[256][8],unsigned char cuda_GuardMoves[256][8],unsigned char cuda_PawnMoves[2][256][4],unsigned char cuda_xRookCapMoves[12][512][4],unsigned char cuda_yRookCapMoves[13][1024][4],unsigned char cuda_xCannonCapMoves[12][512][4],unsigned char cuda_yCannonCapMoves[13][1024][4])
 {
     int tid=blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int  move, nSrc, nDst;
-    unsigned char *pMove;
-    //0~7 將帥 
+    unsigned int  move, nSrc, nDst, x, y, nChess;
+    unsigned char pMove;
+    //0~7 將帥************************************************************************************************ 
     if(tid<8)
     {
+        nChess=k;
         nSrc = cuda_Piece[nChess];// 將帥存在︰nSrc!=0
+        pMove = cuda_KingMoves[nSrc][tid];
+        nDst = pMove;
+        WRITE_2_CUDA_MOVE;
+    }
+    //8~55 車**************************************************************************************************
+    else if(tid<56)
+    {
+        if(tid<32){nChess=k+1;}
+        else{nChess=k+2;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        x = nSrc & 0xF;// 后4位有效
+        y = nSrc >> 4;// 前4位有效
+        //車的橫向移動︰
+        if( (8<=tid&&tid<=19) || (32<=tid&&tid<=43) )
         {
-            nDst = cuda_KingMoves[nSrc][tid];
+            pMove = cuda_xRookMoves[x][cuda_xBitBoard[y]][(tid-8)%12];
+            nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_CUDA_MOVE;
         }
+        //車的縱向移動
+        else
+        {
+            pMove = cuda_yRookMoves[y][cuda_yBitBoard[x]][(tid-8)%12];
+            nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
+            WRITE_2_CUDA_MOVE;
+        }
+    }
+    //56~103 炮***********************************************************************************************
+    else if(tid<104)
+    {
+        if(tid<80){nChess=k+3;}
+        else{nChess=k+4;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        x = nSrc & 0xF;// 后4位有效
+        y = nSrc >> 4;// 前4位有效
+        //炮的橫向移動︰
+        if( (56<=tid&&tid<=67) || (80<=tid&&tid<=91) )
+        {
+            pMove = cuda_xCannonMoves[x][cuda_xBitBoard[y]][(tid-56)%12];
+            nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
+            WRITE_2_CUDA_MOVE;
+        }
+        //炮的縱向移動
+        else
+        {
+            pMove = cuda_yCannonMoves[y][cuda_yBitBoard[x]][(tid-56)%12];
+            nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
+            WRITE_2_CUDA_MOVE;
+        }
+    }
+    //104~127 馬**********************************************************************************************
+    else if(tid<128)
+    {
+        if(tid<116){nChess=k+5;}
+        else{nChess=k+6;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        pMove = cuda_KnightMoves[nSrc][(tid-104)%12];
+        nDst = pMove;
+        if( !cuda_Board[nSrc+cuda_nHorseLegTab[nDst-nSrc+256]] )//拐馬腳
+        {					
+            WRITE_2_CUDA_MOVE;
+        }
+        else
+        {
+            cuda_move[tid]=0;
+        }
+    }
+    //128~143 象**********************************************************************************************
+    else if(tid<144)
+    {
+        if(tid<136){nChess=k+7;}
+        else{nChess=k+8;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        pMove = cuda_BishopMoves[nSrc][(tid-128)%8];
+        nDst = pMove;
+        if( !cuda_Board[(nSrc+nDst)>>1] )//象眼無子
+        {
+            WRITE_2_CUDA_MOVE;
+        }
+        else
+        {
+            cuda_move[tid]=0;
+        }
+    }
+    //144~159 士**********************************************************************************************
+    else if(tid<160)
+    {
+        if(tid<152){nChess=k+9;}
+        else{nChess=k+10;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        pMove = cuda_GuardMoves[nSrc][(tid-144)%8];
+        nDst = pMove;
+        WRITE_2_CUDA_MOVE;
+    }
+    //160~179 兵**********************************************************************************************
+    else if(tid<180)
+    {
+        if(tid<164){nChess=k+11;}
+        else if(tid<168){nChess=k+12;}
+        else if(tid<172){nChess=k+13;}
+        else if(tid<176){nChess=k+14;}
+        else{nChess=k+15;}
+
+        int Player;
+        if(k<32){Player=0;}
+        else{Player=1;}
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
+        nDst = pMove;
+        WRITE_2_CUDA_MOVE;
     }
 }
 
 //呼叫cuda_MoveGen
-void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
+#define numOfThreads 180
+void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
 {
-    int numOfThreads=8;
     unsigned int* cuda_move;//配置GPU存放結果的記憶體
     cutilSafeCall(cudaMalloc( (void**) &cuda_move, 4*numOfThreads));
-    //把棋盤當前狀態Board[256]和Piece[48] copy進去
+    //copy Board[256]和Piece[48] 棋盤當前狀態
     cutilSafeCall(cudaMemcpyToSymbol(cuda_Board,Board,1024));
     cutilSafeCall(cudaMemcpyToSymbol(cuda_Piece,Piece,192));
+    //copy  xBitBoard yBitBoard
+    cutilSafeCall(cudaMemcpyToSymbol(cuda_xBitBoard,xBitBoard,64));
+    cutilSafeCall(cudaMemcpyToSymbol(cuda_yBitBoard,yBitBoard,64));
 
-    cudaMoveGen<<<1,8>>>(nChess,cuda_move,(unsigned char (*)[8])cuda_KingMoves,(unsigned char (*)[512][12])cuda_xRookMoves,(unsigned char (*)[1024][12])cuda_yRookMoves,(unsigned char (*)[512][12])cuda_xCannonMoves,(unsigned char (*)[1024][12])cuda_yCannonMoves,(unsigned char (*)[12])cuda_KnightMoves,(unsigned char (*)[8])cuda_BishopMoves,(unsigned char (*)[8])cuda_GuardMoves,(unsigned char (*)[256][4])cuda_PawnMoves,(unsigned char (*)[512][4])cuda_xRookCapMoves,(unsigned char (*)[1024][4])cuda_yRookCapMoves,(unsigned char (*)[512][4])cuda_xCannonCapMoves,(unsigned char (*)[1024][4])cuda_yCannonCapMoves);
+    cudaMoveGen<<<1,numOfThreads>>>(nChess,cuda_move,(unsigned char (*)[8])cuda_KingMoves,(unsigned char (*)[512][12])cuda_xRookMoves,(unsigned char (*)[1024][12])cuda_yRookMoves,(unsigned char (*)[512][12])cuda_xCannonMoves,(unsigned char (*)[1024][12])cuda_yCannonMoves,(unsigned char (*)[12])cuda_KnightMoves,(unsigned char (*)[8])cuda_BishopMoves,(unsigned char (*)[8])cuda_GuardMoves,(unsigned char (*)[256][4])cuda_PawnMoves,(unsigned char (*)[512][4])cuda_xRookCapMoves,(unsigned char (*)[1024][4])cuda_yRookCapMoves,(unsigned char (*)[512][4])cuda_xCannonCapMoves,(unsigned char (*)[1024][4])cuda_yCannonCapMoves);
 
     //把結果copy出來
-    unsigned int host_move[8];
+    unsigned int host_move[numOfThreads];
     cutilSafeCall(cudaMemcpy( host_move, cuda_move, 4*numOfThreads, cudaMemcpyDeviceToHost)); 
     //印出來檢驗
     //for(int i=0;i<numOfThreads;i++)
