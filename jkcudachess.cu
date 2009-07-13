@@ -444,6 +444,8 @@ void call_vecAdd()
     */
 }
 
+#define numOfThreads 180
+//預展開步數
 unsigned char * cuda_KingMoves;
 unsigned char * cuda_xRookMoves;
 unsigned char * cuda_yRookMoves;
@@ -457,6 +459,8 @@ unsigned char * cuda_xRookCapMoves;
 unsigned char * cuda_yRookCapMoves;
 unsigned char * cuda_xCannonCapMoves;
 unsigned char * cuda_yCannonCapMoves;
+//配置GPU存放結果的記憶體
+unsigned int* cuda_move;
 
 __constant__ unsigned int cuda_xBitBoard[16];//16*4=64
 __constant__ unsigned int cuda_yBitBoard[16];//16*4=64
@@ -541,17 +545,14 @@ void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xR
     cutilSafeCall(cudaMalloc( (void**) &cuda_yCannonCapMoves, MEMSIZE_yCannonCapMoves));
     cutilSafeCall(cudaMemcpy( cuda_yCannonCapMoves, host_yCannonCapMoves, MEMSIZE_yCannonCapMoves, cudaMemcpyHostToDevice));
 
-    printf("size of float %d\n",sizeof(float));
-    printf("size of int %d\n",sizeof(int));
-    printf("size of char %d\n",sizeof(char));
-    printf("size of short %d\n",sizeof(short));
+    cutilSafeCall(cudaMalloc( (void**) &cuda_move, 4*numOfThreads));
 }
 //cuda MoveGen主體
 #define WRITE_2_CUDA_MOVE if(pMove&&nSrc&&nDst&&!cuda_Board[nDst]){cuda_move[tid]=(nSrc<<8)|nDst;}else{cuda_move[tid]=0;}
 __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigned char cuda_KingMoves[256][8],unsigned char cuda_xRookMoves[12][512][12],unsigned char cuda_yRookMoves[13][1024][12],unsigned char cuda_xCannonMoves[12][512][12],unsigned char cuda_yCannonMoves[13][1024][12],unsigned char cuda_KnightMoves[256][12],unsigned char cuda_BishopMoves[256][8],unsigned char cuda_GuardMoves[256][8],unsigned char cuda_PawnMoves[2][256][4],unsigned char cuda_xRookCapMoves[12][512][4],unsigned char cuda_yRookCapMoves[13][1024][4],unsigned char cuda_xCannonCapMoves[12][512][4],unsigned char cuda_yCannonCapMoves[13][1024][4])
 {
     int tid=blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int  move, nSrc, nDst, x, y, nChess;
+    unsigned int  nSrc, nDst, x, y, nChess;
     unsigned char pMove;
     //0~7 將帥************************************************************************************************ 
     if(tid<8)
@@ -677,11 +678,8 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
 }
 
 //呼叫cuda_MoveGen
-#define numOfThreads 180
 void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
 {
-    unsigned int* cuda_move;//配置GPU存放結果的記憶體
-    cutilSafeCall(cudaMalloc( (void**) &cuda_move, 4*numOfThreads));
     //copy Board[256]和Piece[48] 棋盤當前狀態
     cutilSafeCall(cudaMemcpyToSymbol(cuda_Board,Board,1024));
     cutilSafeCall(cudaMemcpyToSymbol(cuda_Piece,Piece,192));
@@ -700,8 +698,8 @@ void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],uns
     //    printf("%d : %u\n",i,host_move[i]);
     //}
 
-    //釋放顯示卡記憶體
-    cudaFree(cuda_move);
+    ////釋放顯示卡記憶體
+    //cudaFree(cuda_move);
 
     for(int i=0;i<numOfThreads;i++)
     {
