@@ -445,6 +445,20 @@ void call_vecAdd()
 }
 
 #define numOfThreads 180
+
+texture<unsigned char, 1, cudaReadModeElementType> texture_KingMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_xRookMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_yRookMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_xCannonMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_yCannonMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_KnightMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_BishopMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_GuardMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_PawnMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_xRookCapMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_yRookCapMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_xCannonCapMoves;
+texture<unsigned char, 1, cudaReadModeElementType> texture_yCannonCapMoves;
 //預展開步數
 unsigned char * cuda_KingMoves;
 unsigned char * cuda_xRookMoves;
@@ -518,38 +532,76 @@ void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xR
     int MEMSIZE_xCannonCapMoves=24576;
     int MEMSIZE_yCannonCapMoves=53248;
 
+    //cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<unsigned char>();
+    //const cudaExtent KingMoves_volumeSize = make_cudaExtent(256, 8, 0);
+    //cudaArray *cuda_KingMovesArray;
+    //cutilSafeCall(cudaMalloc3DArray(&cuda_KingMovesArray, &channelDesc, KingMoves_volumeSize) );
+    //// copy data to 3D array
+    //cudaMemcpy3DParms KingMoves_copyParams = {0};
+    //KingMoves_copyParams.srcPtr   = make_cudaPitchedPtr((void*)host_KingMoves, KingMoves_volumeSize.width*sizeof(unsigned char), KingMoves_volumeSize.width, KingMoves_volumeSize.height);
+    //KingMoves_copyParams.dstArray = cuda_KingMovesArray;
+    //KingMoves_copyParams.extent   = KingMoves_volumeSize;
+    //KingMoves_copyParams.kind     = cudaMemcpyHostToDevice;
+    //cutilSafeCall(cudaMemcpy3D(&KingMoves_copyParams));
+    //cutilSafeCall(cudaBindTextureToArray(texture_KingMoves,cuda_KingMovesArray,channelDesc));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_KingMoves, MEMSIZE_KingMoves));
     cutilSafeCall(cudaMemcpy( cuda_KingMoves, host_KingMoves, MEMSIZE_KingMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_KingMoves,cuda_KingMoves,MEMSIZE_KingMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_xRookMoves, MEMSIZE_xRookMoves));
     cutilSafeCall(cudaMemcpy( cuda_xRookMoves, host_xRookMoves, MEMSIZE_xRookMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_xRookMoves,cuda_xRookMoves,MEMSIZE_xRookMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_yRookMoves, MEMSIZE_yRookMoves));
     cutilSafeCall(cudaMemcpy( cuda_yRookMoves, host_yRookMoves, MEMSIZE_yRookMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_yRookMoves,cuda_yRookMoves,MEMSIZE_yRookMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_xCannonMoves, MEMSIZE_xCannonMoves));
     cutilSafeCall(cudaMemcpy( cuda_xCannonMoves, host_xCannonMoves, MEMSIZE_xCannonMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_xCannonMoves,cuda_xCannonMoves,MEMSIZE_xCannonMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_yCannonMoves, MEMSIZE_yCannonMoves));
     cutilSafeCall(cudaMemcpy( cuda_yCannonMoves, host_yCannonMoves, MEMSIZE_yCannonMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_yCannonMoves,cuda_yCannonMoves,MEMSIZE_yCannonMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_KnightMoves, MEMSIZE_KnightMoves));
     cutilSafeCall(cudaMemcpy( cuda_KnightMoves, host_KnightMoves, MEMSIZE_KnightMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_KnightMoves,cuda_KnightMoves,MEMSIZE_KnightMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_BishopMoves, MEMSIZE_BishopMoves));
     cutilSafeCall(cudaMemcpy( cuda_BishopMoves, host_BishopMoves, MEMSIZE_BishopMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_BishopMoves,cuda_BishopMoves,MEMSIZE_BishopMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_GuardMoves, MEMSIZE_GuardMoves));
     cutilSafeCall(cudaMemcpy( cuda_GuardMoves, host_GuardMoves, MEMSIZE_GuardMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_GuardMoves,cuda_GuardMoves,MEMSIZE_GuardMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_PawnMoves, MEMSIZE_PawnMoves));
     cutilSafeCall(cudaMemcpy( cuda_PawnMoves, host_PawnMoves, MEMSIZE_PawnMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_PawnMoves,cuda_PawnMoves,MEMSIZE_PawnMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_xRookCapMoves, MEMSIZE_xRookCapMoves));
     cutilSafeCall(cudaMemcpy( cuda_xRookCapMoves, host_xRookCapMoves, MEMSIZE_xRookCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_xRookCapMoves,cuda_xRookCapMoves,MEMSIZE_xRookCapMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_yRookCapMoves, MEMSIZE_yRookCapMoves));
     cutilSafeCall(cudaMemcpy( cuda_yRookCapMoves, host_yRookCapMoves, MEMSIZE_yRookCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_yRookCapMoves,cuda_yRookCapMoves,MEMSIZE_yRookCapMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_xCannonCapMoves, MEMSIZE_xCannonCapMoves));
     cutilSafeCall(cudaMemcpy( cuda_xCannonCapMoves, host_xCannonCapMoves, MEMSIZE_xCannonCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_xCannonCapMoves,cuda_xCannonCapMoves,MEMSIZE_xCannonCapMoves));
+
     cutilSafeCall(cudaMalloc( (void**) &cuda_yCannonCapMoves, MEMSIZE_yCannonCapMoves));
     cutilSafeCall(cudaMemcpy( cuda_yCannonCapMoves, host_yCannonCapMoves, MEMSIZE_yCannonCapMoves, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaBindTexture(0, texture_yCannonCapMoves,cuda_yCannonCapMoves,MEMSIZE_yCannonCapMoves));
 
     cutilSafeCall(cudaMalloc( (void**) &cuda_move, 4*numOfThreads));
 }
 //cuda MoveGen主體
 #define WRITE_2_CUDA_MOVE if(pMove&&nSrc&&nDst&&!cuda_Board[nDst]){cuda_move[tid]=(nSrc<<8)|nDst;}else{cuda_move[tid]=0;}
-__global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigned char cuda_KingMoves[256][8],unsigned char cuda_xRookMoves[12][512][12],unsigned char cuda_yRookMoves[13][1024][12],unsigned char cuda_xCannonMoves[12][512][12],unsigned char cuda_yCannonMoves[13][1024][12],unsigned char cuda_KnightMoves[256][12],unsigned char cuda_BishopMoves[256][8],unsigned char cuda_GuardMoves[256][8],unsigned char cuda_PawnMoves[2][256][4],unsigned char cuda_xRookCapMoves[12][512][4],unsigned char cuda_yRookCapMoves[13][1024][4],unsigned char cuda_xCannonCapMoves[12][512][4],unsigned char cuda_yCannonCapMoves[13][1024][4])
+__global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
 {
     int tid=blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int  nSrc, nDst, x, y, nChess;
@@ -559,7 +611,8 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
     {
         nChess=k;
         nSrc = cuda_Piece[nChess];// 將帥存在︰nSrc!=0
-        pMove = cuda_KingMoves[nSrc][tid];
+        //pMove = cuda_KingMoves[nSrc][tid];
+        pMove = tex1Dfetch(texture_KingMoves,nSrc*8+tid);
         nDst = pMove;
         WRITE_2_CUDA_MOVE;
     }
@@ -575,14 +628,16 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
         //車的橫向移動︰
         if( (8<=tid&&tid<=19) || (32<=tid&&tid<=43) )
         {
-            pMove = cuda_xRookMoves[x][cuda_xBitBoard[y]][(tid-8)%12];
+            //pMove = cuda_xRookMoves[x][cuda_xBitBoard[y]][(tid-8)%12];
+            pMove = tex1Dfetch(texture_xRookMoves,x*512*12+cuda_xBitBoard[y]*12+(tid-8)%12);
             nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_CUDA_MOVE;
         }
         //車的縱向移動
         else
         {
-            pMove = cuda_yRookMoves[y][cuda_yBitBoard[x]][(tid-8)%12];
+            //pMove = cuda_yRookMoves[y][cuda_yBitBoard[x]][(tid-8)%12];
+            pMove = tex1Dfetch(texture_yRookMoves,y*1024*12+cuda_yBitBoard[x]*12+(tid-8)%12);
             nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_CUDA_MOVE;
         }
@@ -599,14 +654,16 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
         //炮的橫向移動︰
         if( (56<=tid&&tid<=67) || (80<=tid&&tid<=91) )
         {
-            pMove = cuda_xCannonMoves[x][cuda_xBitBoard[y]][(tid-56)%12];
+            //pMove = cuda_xCannonMoves[x][cuda_xBitBoard[y]][(tid-56)%12];
+            pMove = tex1Dfetch(texture_xCannonMoves,x*512*12+cuda_xBitBoard[y]*12+(tid-56)%12);
             nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_CUDA_MOVE;
         }
         //炮的縱向移動
         else
         {
-            pMove = cuda_yCannonMoves[y][cuda_yBitBoard[x]][(tid-56)%12];
+            //pMove = cuda_yCannonMoves[y][cuda_yBitBoard[x]][(tid-56)%12];
+            pMove = tex1Dfetch(texture_yCannonMoves,y*1024*12+cuda_yBitBoard[x]*12+(tid-56)%12);
             nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_CUDA_MOVE;
         }
@@ -618,7 +675,8 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
         else{nChess=k+6;}
 
         nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-        pMove = cuda_KnightMoves[nSrc][(tid-104)%12];
+        //pMove = cuda_KnightMoves[nSrc][(tid-104)%12];
+        pMove = tex1Dfetch(texture_KnightMoves,nSrc*12+(tid-104)%12);
         nDst = pMove;
         if( !cuda_Board[nSrc+cuda_nHorseLegTab[nDst-nSrc+256]] )//拐馬腳
         {					
@@ -636,7 +694,8 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
         else{nChess=k+8;}
 
         nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-        pMove = cuda_BishopMoves[nSrc][(tid-128)%8];
+        //pMove = cuda_BishopMoves[nSrc][(tid-128)%8];
+        pMove = tex1Dfetch(texture_BishopMoves,nSrc*8+(tid-128)%8);
         nDst = pMove;
         if( !cuda_Board[(nSrc+nDst)>>1] )//象眼無子
         {
@@ -654,7 +713,8 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
         else{nChess=k+10;}
 
         nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-        pMove = cuda_GuardMoves[nSrc][(tid-144)%8];
+        //pMove = cuda_GuardMoves[nSrc][(tid-144)%8];
+        pMove = tex1Dfetch(texture_GuardMoves,nSrc*8+(tid-144)%8);
         nDst = pMove;
         WRITE_2_CUDA_MOVE;
     }
@@ -671,7 +731,8 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move,unsigne
         if(k<32){Player=0;}
         else{Player=1;}
         nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-        pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
+        //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
+        pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+(tid-160)%4);
         nDst = pMove;
         WRITE_2_CUDA_MOVE;
     }
@@ -687,7 +748,7 @@ void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],uns
     cutilSafeCall(cudaMemcpyToSymbol(cuda_xBitBoard,xBitBoard,64));
     cutilSafeCall(cudaMemcpyToSymbol(cuda_yBitBoard,yBitBoard,64));
 
-    cudaMoveGen<<<1,numOfThreads>>>(nChess,cuda_move,(unsigned char (*)[8])cuda_KingMoves,(unsigned char (*)[512][12])cuda_xRookMoves,(unsigned char (*)[1024][12])cuda_yRookMoves,(unsigned char (*)[512][12])cuda_xCannonMoves,(unsigned char (*)[1024][12])cuda_yCannonMoves,(unsigned char (*)[12])cuda_KnightMoves,(unsigned char (*)[8])cuda_BishopMoves,(unsigned char (*)[8])cuda_GuardMoves,(unsigned char (*)[256][4])cuda_PawnMoves,(unsigned char (*)[512][4])cuda_xRookCapMoves,(unsigned char (*)[1024][4])cuda_yRookCapMoves,(unsigned char (*)[512][4])cuda_xCannonCapMoves,(unsigned char (*)[1024][4])cuda_yCannonCapMoves);
+    cudaMoveGen<<<1,numOfThreads>>>(nChess,cuda_move);
 
     //把結果copy出來
     unsigned int host_move[numOfThreads];

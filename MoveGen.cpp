@@ -15,8 +15,8 @@
 // 5. 殺手移動合法性檢驗                                                                                  //
 // 6. 將軍檢測Checked(Player), Checking(1-Player)                                                         //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #include "stdio.h"
+#include "time.h"
 #include "MoveGen.h"
 #include "PreMove.h"
 
@@ -242,10 +242,13 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
 {
     const unsigned int  k = (1+Player) << 4;	    //k=16,黑棋; k=32,紅棋。
     CChessMove* ChessMove = pGenMove;		//移動的計數器
+
+    call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove,HistoryRecord);
+
     //unsigned int  move, nSrc, nDst, x, y, nChess;
     //unsigned char *pMove;
 
-    call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove,HistoryRecord);
+
     /*
     //
     // 產生將帥的移動********************************************************************************************
