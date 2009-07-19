@@ -248,10 +248,10 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
     call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove2,HistoryRecord);
     /*
     //檢查核心運行時間
-    int testLoop=10000;
-    double t_cpu=(double)clock()/CLOCKS_PER_SEC;
-    for(int i=0;i<testLoop;i++)
-    {
+    //int testLoop=10000;
+    //double t_cpu=(double)clock()/CLOCKS_PER_SEC;
+    //for(int i=0;i<testLoop;i++)
+    //{
     call_cudaMoveGen_null(k,Board,Piece,xBitBoard,yBitBoard,ChessMove2,HistoryRecord);
     CChessMove* ChessMove = pGenMove;		//移動的計數器
     unsigned int  move, nSrc, nDst, x, y, nChess;
@@ -425,10 +425,10 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
             }
         }
     }
-    }
-    t_cpu=((double)clock()/CLOCKS_PER_SEC-t_cpu);
-    printf("time[cpu]: %g ms\n",t_cpu*1000);
-    //檢查移動計數器
+    //}
+    //t_cpu=((double)clock()/CLOCKS_PER_SEC-t_cpu);
+    //printf("time[cpu]: %g ms\n",t_cpu*1000);
+    ////檢查移動計數器
     //for(int i=0;i<(ChessMove-pGenMove);i++)
     //{
     //    printf("move[%d] = %u\n",i,pGenMove[i]);
@@ -589,7 +589,7 @@ int CMoveGen::CapMoveGen(const int Player, CChessMove* pGenMove)
 				*(ChessMove++) = ((MvvValues[nCaptured] - 1000)<<16) | (nSrc<<8) | nDst;
 		}
 	}	
-
+    
 	return int(ChessMove-pGenMove);
 }
 
