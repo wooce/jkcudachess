@@ -600,11 +600,11 @@ void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xR
     cutilSafeCall(cudaMalloc( (void**) &cuda_move, 4*numOfThreads));
 }
 //cuda MoveGen主體
-#define WRITE_2_CUDA_MOVE if(pMove&&nSrc&&nDst&&!cuda_Board[nDst]){cuda_move[tid]=(nSrc<<8)|nDst;}else{cuda_move[tid]=0;}
+#define WRITE_2_MOVE if(pMove&&nSrc&&nDst&&!cuda_Board[nDst]){move=(nSrc<<8)|nDst;}else{move=0;}
 __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
-{
+{    
     int tid=blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int  nSrc, nDst, x, y, nChess;
+    unsigned int  move, nSrc, nDst, x, y, nChess;
     unsigned char pMove;
     //0~7 將帥************************************************************************************************ 
     if(tid<8)
@@ -614,7 +614,7 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
         //pMove = cuda_KingMoves[nSrc][tid];
         pMove = tex1Dfetch(texture_KingMoves,nSrc*8+tid);
         nDst = pMove;
-        WRITE_2_CUDA_MOVE;
+        WRITE_2_MOVE;
     }
     //8~55 車**************************************************************************************************
     else if(tid<56)
@@ -631,7 +631,7 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
             //pMove = cuda_xRookMoves[x][cuda_xBitBoard[y]][(tid-8)%12];
             pMove = tex1Dfetch(texture_xRookMoves,x*512*12+cuda_xBitBoard[y]*12+(tid-8)%12);
             nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_CUDA_MOVE;
+            WRITE_2_MOVE;
         }
         //車的縱向移動
         else
@@ -639,7 +639,7 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
             //pMove = cuda_yRookMoves[y][cuda_yBitBoard[x]][(tid-8)%12];
             pMove = tex1Dfetch(texture_yRookMoves,y*1024*12+cuda_yBitBoard[x]*12+(tid-8)%12);
             nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_CUDA_MOVE;
+            WRITE_2_MOVE;
         }
     }
     //56~103 炮***********************************************************************************************
@@ -657,7 +657,7 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
             //pMove = cuda_xCannonMoves[x][cuda_xBitBoard[y]][(tid-56)%12];
             pMove = tex1Dfetch(texture_xCannonMoves,x*512*12+cuda_xBitBoard[y]*12+(tid-56)%12);
             nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_CUDA_MOVE;
+            WRITE_2_MOVE;
         }
         //炮的縱向移動
         else
@@ -665,7 +665,7 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
             //pMove = cuda_yCannonMoves[y][cuda_yBitBoard[x]][(tid-56)%12];
             pMove = tex1Dfetch(texture_yCannonMoves,y*1024*12+cuda_yBitBoard[x]*12+(tid-56)%12);
             nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_CUDA_MOVE;
+            WRITE_2_MOVE;
         }
     }
     //104~127 馬**********************************************************************************************
@@ -680,11 +680,11 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
         nDst = pMove;
         if( !cuda_Board[nSrc+cuda_nHorseLegTab[nDst-nSrc+256]] )//拐馬腳
         {					
-            WRITE_2_CUDA_MOVE;
+            WRITE_2_MOVE;
         }
         else
         {
-            cuda_move[tid]=0;
+            move=0;
         }
     }
     //128~143 象**********************************************************************************************
@@ -699,11 +699,11 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
         nDst = pMove;
         if( !cuda_Board[(nSrc+nDst)>>1] )//象眼無子
         {
-            WRITE_2_CUDA_MOVE;
+            WRITE_2_MOVE;
         }
         else
         {
-            cuda_move[tid]=0;
+            move=0;
         }
     }
     //144~159 士**********************************************************************************************
@@ -716,7 +716,7 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
         //pMove = cuda_GuardMoves[nSrc][(tid-144)%8];
         pMove = tex1Dfetch(texture_GuardMoves,nSrc*8+(tid-144)%8);
         nDst = pMove;
-        WRITE_2_CUDA_MOVE;
+        WRITE_2_MOVE;
     }
     //160~179 兵**********************************************************************************************
     else if(tid<180)
@@ -734,10 +734,20 @@ __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
         //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
         pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+(tid-160)%4);
         nDst = pMove;
-        WRITE_2_CUDA_MOVE;
-    }
+        WRITE_2_MOVE;
+    }    
+    cuda_move[tid]=move; 
 }
+__global__ void cuda_null()
+{
 
+}
+//呼叫cuda_MoveGen_null
+void call_cudaMoveGen_null(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
+{
+    cuda_null<<<1,numOfThreads>>>();
+    cudaThreadSynchronize();
+}
 //呼叫cuda_MoveGen
 void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
 {
@@ -748,7 +758,26 @@ void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],uns
     cutilSafeCall(cudaMemcpyToSymbol(cuda_xBitBoard,xBitBoard,64));
     cutilSafeCall(cudaMemcpyToSymbol(cuda_yBitBoard,yBitBoard,64));
 
+    //檢查核心運行時間
+    int testLoop=100000;
+    double t0=(double)clock()/CLOCKS_PER_SEC;
+    for(int i=0;i<testLoop;i++)
+    {
+    cuda_null<<<1,numOfThreads>>>();
+    cudaThreadSynchronize();
+    }
+    t0=((double)clock()/CLOCKS_PER_SEC-t0);
+    printf("time[null]: %g ms\n",t0*1000);
+    double t1=(double)clock()/CLOCKS_PER_SEC;
+    for(int i=0;i<testLoop;i++)
+    {
     cudaMoveGen<<<1,numOfThreads>>>(nChess,cuda_move);
+    cudaThreadSynchronize();
+    }
+    t1=((double)clock()/CLOCKS_PER_SEC-t1);
+    printf("time[gpu]: %g ms\n",t1*1000);
+    printf("pure time: %g ms\n",(t1-t0)*1000);
+
 
     //把結果copy出來
     unsigned int host_move[numOfThreads];
@@ -756,7 +785,7 @@ void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],uns
     //印出來檢驗
     //for(int i=0;i<numOfThreads;i++)
     //{
-    //    printf("%d : %u\n",i,host_move[i]);
+    //    printf("thread %d -> move[%d] = %u\n",i,i,host_move[i]);
     //}
 
     ////釋放顯示卡記憶體
