@@ -22,6 +22,8 @@
 
 extern void copyPreMoveToGPU(unsigned char host_KingMoves[256][8],unsigned char host_xRookMoves[12][512][12],unsigned char host_yRookMoves[13][1024][12],unsigned char host_xCannonMoves[12][512][12],unsigned char host_yCannonMoves[13][1024][12],unsigned char host_KnightMoves[256][12],unsigned char host_BishopMoves[256][8],unsigned char host_GuardMoves[256][8],unsigned char host_PawnMoves[2][256][4],unsigned char host_xRookCapMoves[12][512][4],unsigned char host_yRookCapMoves[13][1024][4],unsigned char host_xCannonCapMoves[12][512][4],unsigned char host_yCannonCapMoves[13][1024][4]);
 extern void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535]);
+extern void call_cudaMoveGen_null(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535]);
+
 // 棋盤數組和棋子數組
 int Board[256];								// 棋盤數組，表示棋子序號︰0～15，無子; 16～31,黑子; 32～47, 紅子；
 int Piece[48];								// 棋子數組，表示棋盤位置︰0, 不在棋盤上; 0x33～0xCC, 對應棋盤位置；	
@@ -241,15 +243,20 @@ void CMoveGen::UpdateHistoryRecord(unsigned int nMode)
 int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
 {
     const unsigned int  k = (1+Player) << 4;	    //k=16,黑棋; k=32,紅棋。
-    CChessMove* ChessMove = pGenMove;		//移動的計數器
+    CChessMove* ChessMove2 = pGenMove;		//移動的計數器
 
-    call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove,HistoryRecord);
-
-    //unsigned int  move, nSrc, nDst, x, y, nChess;
-    //unsigned char *pMove;
-
-
+    call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove2,HistoryRecord);
     /*
+    //檢查核心運行時間
+    int testLoop=10000;
+    double t_cpu=(double)clock()/CLOCKS_PER_SEC;
+    for(int i=0;i<testLoop;i++)
+    {
+    call_cudaMoveGen_null(k,Board,Piece,xBitBoard,yBitBoard,ChessMove2,HistoryRecord);
+    CChessMove* ChessMove = pGenMove;		//移動的計數器
+    unsigned int  move, nSrc, nDst, x, y, nChess;
+    unsigned char *pMove;
+    
     //
     // 產生將帥的移動********************************************************************************************
     nChess = k;
@@ -418,15 +425,16 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
             }
         }
     }
-    */
-
+    }
+    t_cpu=((double)clock()/CLOCKS_PER_SEC-t_cpu);
+    printf("time[cpu]: %g ms\n",t_cpu*1000);
     //檢查移動計數器
     //for(int i=0;i<(ChessMove-pGenMove);i++)
     //{
-    //    printf("%d : %u\n",i,pGenMove[i]);
+    //    printf("move[%d] = %u\n",i,pGenMove[i]);
     //}
-
-    return int(ChessMove-pGenMove);
+    */
+    return int(ChessMove2-pGenMove);
 }
 
 
