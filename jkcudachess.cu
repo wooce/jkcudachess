@@ -929,328 +929,140 @@ __global__ void cudaMoveGen_warp(const unsigned int k,unsigned int* cuda_move)
 
 __global__ void cudaMoveGen(const unsigned int k,unsigned int* cuda_move)
 {    
-    //int tid=blockIdx.x * blockDim.x + threadIdx.x;
+    int tid=blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int  move, nSrc, nDst, x, y, nChess;
     unsigned char pMove;
-    //將帥**************************************************************************
-    if(blockIdx.x==0)
+    //0~7 將帥************************************************************************************************ 
+    if(tid<8)
     {
-        if(threadIdx.x<8)
-        {
-            nChess=k;
-            nSrc = cuda_Piece[nChess];// 將帥存在︰nSrc!=0
-            //pMove = cuda_KingMoves[nSrc][tid];
-            pMove = tex1Dfetch(texture_KingMoves,nSrc*8+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x]=move;
-        }
+        nChess=k;
+        nSrc = cuda_Piece[nChess];// 將帥存在︰nSrc!=0
+        //pMove = cuda_KingMoves[nSrc][tid];
+        pMove = tex1Dfetch(texture_KingMoves,nSrc*8+tid);
+        nDst = pMove;
+        WRITE_2_MOVE;
     }
-    //車****************************************************************************
-    else if( blockIdx.x==1 )
+    //8~55 車**************************************************************************************************
+    else if(tid<56)
     {
-        if(threadIdx.x<12)
+        if(tid<32){nChess=k+1;}
+        else{nChess=k+2;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        x = nSrc & 0xF;// 后4位有效
+        y = nSrc >> 4;// 前4位有效
+        //車的橫向移動︰
+        if( (8<=tid&&tid<=19) || (32<=tid&&tid<=43) )
         {
-            nChess=k+1;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //車的橫向移動︰
-            pMove = tex1Dfetch(texture_xRookMoves,x*512*12+cuda_xBitBoard[y]*12+threadIdx.x);
+            //pMove = cuda_xRookMoves[x][cuda_xBitBoard[y]][(tid-8)%12];
+            pMove = tex1Dfetch(texture_xRookMoves,x*512*12+cuda_xBitBoard[y]*12+(tid-8)%12);
             nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_MOVE;
-           cuda_move[threadIdx.x+8]=move;
         }
-    }
-    else if( blockIdx.x==2 )
-    {
-        if(threadIdx.x<12)
+        //車的縱向移動
+        else
         {
-            nChess=k+1;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //車的橫向移動︰
-            pMove = tex1Dfetch(texture_yRookMoves,y*1024*12+cuda_yBitBoard[x]*12+threadIdx.x);
+            //pMove = cuda_yRookMoves[y][cuda_yBitBoard[x]][(tid-8)%12];
+            pMove = tex1Dfetch(texture_yRookMoves,y*1024*12+cuda_yBitBoard[x]*12+(tid-8)%12);
             nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_MOVE;
-           cuda_move[threadIdx.x+20]=move;
         }
     }
-    else if( blockIdx.x==3 )
+    //56~103 炮***********************************************************************************************
+    else if(tid<104)
     {
-        if(threadIdx.x<12)
+        if(tid<80){nChess=k+3;}
+        else{nChess=k+4;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        x = nSrc & 0xF;// 后4位有效
+        y = nSrc >> 4;// 前4位有效
+        //炮的橫向移動︰
+        if( (56<=tid&&tid<=67) || (80<=tid&&tid<=91) )
         {
-            nChess=k+2;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //車的橫向移動︰
-            pMove = tex1Dfetch(texture_xRookMoves,x*512*12+cuda_xBitBoard[y]*12+threadIdx.x);
+            //pMove = cuda_xCannonMoves[x][cuda_xBitBoard[y]][(tid-56)%12];
+            pMove = tex1Dfetch(texture_xCannonMoves,x*512*12+cuda_xBitBoard[y]*12+(tid-56)%12);
             nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_MOVE;
-           cuda_move[threadIdx.x+32]=move;
         }
-    }
-    else if( blockIdx.x==4 )
-    {
-        if(threadIdx.x<12)
+        //炮的縱向移動
+        else
         {
-            nChess=k+2;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //車的橫向移動︰
-            pMove = tex1Dfetch(texture_yRookMoves,y*1024*12+cuda_yBitBoard[x]*12+threadIdx.x);
+            //pMove = cuda_yCannonMoves[y][cuda_yBitBoard[x]][(tid-56)%12];
+            pMove = tex1Dfetch(texture_yCannonMoves,y*1024*12+cuda_yBitBoard[x]*12+(tid-56)%12);
             nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
             WRITE_2_MOVE;
-           cuda_move[threadIdx.x+44]=move;
         }
+    }
+    //104~127 馬**********************************************************************************************
+    else if(tid<128)
+    {
+        if(tid<116){nChess=k+5;}
+        else{nChess=k+6;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        //pMove = cuda_KnightMoves[nSrc][(tid-104)%12];
+        pMove = tex1Dfetch(texture_KnightMoves,nSrc*12+(tid-104)%12);
+        nDst = pMove;
+        if( !cuda_Board[nSrc+cuda_nHorseLegTab[nDst-nSrc+256]] )//拐馬腳
+        {					
+            WRITE_2_MOVE;
+        }
+        else
+        {
+            move=0;
+        }
+    }
+    //128~143 象**********************************************************************************************
+    else if(tid<144)
+    {
+        if(tid<136){nChess=k+7;}
+        else{nChess=k+8;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        //pMove = cuda_BishopMoves[nSrc][(tid-128)%8];
+        pMove = tex1Dfetch(texture_BishopMoves,nSrc*8+(tid-128)%8);
+        nDst = pMove;
+        if( !cuda_Board[(nSrc+nDst)>>1] )//象眼無子
+        {
+            WRITE_2_MOVE;
+        }
+        else
+        {
+            move=0;
+        }
+    }
+    //144~159 士**********************************************************************************************
+    else if(tid<160)
+    {
+        if(tid<152){nChess=k+9;}
+        else{nChess=k+10;}
+
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        //pMove = cuda_GuardMoves[nSrc][(tid-144)%8];
+        pMove = tex1Dfetch(texture_GuardMoves,nSrc*8+(tid-144)%8);
+        nDst = pMove;
+        WRITE_2_MOVE;
+    }
+    //160~179 兵**********************************************************************************************
+    else if(tid<180)
+    {
+        if(tid<164){nChess=k+11;}
+        else if(tid<168){nChess=k+12;}
+        else if(tid<172){nChess=k+13;}
+        else if(tid<176){nChess=k+14;}
+        else{nChess=k+15;}
+
+        int Player;
+        if(k<32){Player=0;}
+        else{Player=1;}
+        nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
+        //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
+        pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+(tid-160)%4);
+        nDst = pMove;
+        WRITE_2_MOVE;
     }    
-    //炮****************************************************************************
-    else if( blockIdx.x==5 )
-    {
-        if(threadIdx.x<12)
-        {
-            nChess=k+3;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //炮的橫向移動︰
-            pMove = tex1Dfetch(texture_xCannonMoves,x*512*12+cuda_xBitBoard[y]*12+threadIdx.x);
-            nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+56]=move;
-        }
-    }
-    else if( blockIdx.x==6 )
-    {
-        if(threadIdx.x<12)
-        {
-            nChess=k+3;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //炮的縱向移動
-            pMove = tex1Dfetch(texture_yCannonMoves,y*1024*12+cuda_yBitBoard[x]*12+threadIdx.x);
-            nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+68]=move;
-        }
-    }
-    else if( blockIdx.x==7 )
-    {
-        if(threadIdx.x<12)
-        {
-            nChess=k+4;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //炮的橫向移動︰
-            pMove = tex1Dfetch(texture_xCannonMoves,x*512*12+cuda_xBitBoard[y]*12+threadIdx.x);
-            nDst = (nSrc & 0xF0) | pMove;	// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+80]=move;
-        }
-    }
-    else if( blockIdx.x==8 )
-    {
-        if(threadIdx.x<12)
-        {
-            nChess=k+4;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            x = nSrc & 0xF;// 后4位有效
-            y = nSrc >> 4;// 前4位有效
-            //炮的縱向移動
-            pMove = tex1Dfetch(texture_yCannonMoves,y*1024*12+cuda_yBitBoard[x]*12+threadIdx.x);
-            nDst = pMove | x;				// 0x y|x  前4位=y*16， 后4位=x
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+92]=move;
-        }
-    }
-    //馬****************************************************************************
-    else if( blockIdx.x==9 )
-    {
-        if(threadIdx.x<12)
-        {
-            nChess=k+5;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_KnightMoves,nSrc*12+threadIdx.x);
-            nDst = pMove;
-            if( !cuda_Board[nSrc+cuda_nHorseLegTab[nDst-nSrc+256]] )//拐馬腳
-            {					
-                WRITE_2_MOVE;
-            }
-            else
-            {
-                move=0;
-            }
-           cuda_move[threadIdx.x+104]=move;
-        }
-    }
-    else if( blockIdx.x==10 )
-    {
-        if(threadIdx.x<12)
-        {
-            nChess=k+6;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_KnightMoves,nSrc*12+threadIdx.x);
-            nDst = pMove;
-            if( !cuda_Board[nSrc+cuda_nHorseLegTab[nDst-nSrc+256]] )//拐馬腳
-            {					
-                WRITE_2_MOVE;
-            }
-            else
-            {
-                move=0;
-            }
-           cuda_move[threadIdx.x+116]=move;
-        }
-    }
-    //象****************************************************************************
-    else if( blockIdx.x==11 )
-    {
-        if(threadIdx.x<8)
-        {
-            nChess=k+7;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_BishopMoves,nSrc*8+threadIdx.x);
-            nDst = pMove;
-            if( !cuda_Board[(nSrc+nDst)>>1] )//象眼無子
-            {
-                WRITE_2_MOVE;
-            }
-            else
-            {
-                move=0;
-            }
-           cuda_move[threadIdx.x+128]=move;
-        }
-    }
-    else if( blockIdx.x==12 )
-    {
-        if(threadIdx.x<8)
-        {
-            nChess=k+8;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_BishopMoves,nSrc*8+threadIdx.x);
-            nDst = pMove;
-            if( !cuda_Board[(nSrc+nDst)>>1] )//象眼無子
-            {
-                WRITE_2_MOVE;
-            }
-            else
-            {
-                move=0;
-            }
-           cuda_move[threadIdx.x+136]=move;
-        }
-    }
-    //士****************************************************************************
-    else if( blockIdx.x==13 )
-    {
-        if(threadIdx.x<8)
-        {
-            nChess=k+9;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_GuardMoves,nSrc*8+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+144]=move;
-        }
-    }
-    else if( blockIdx.x==14 )
-    {
-        if(threadIdx.x<8)
-        {
-            nChess=k+10;
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_GuardMoves,nSrc*8+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+152]=move;
-        }
-    }
-    //兵****************************************************************************
-    else if( blockIdx.x==15 )
-    {
-        if(threadIdx.x<4)
-        {
-            nChess=k+11;
-            int Player;
-            if(k<32){Player=0;}
-            else{Player=1;}
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
-            pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+160]=move;
-        }
-    }  
-    else if( blockIdx.x==16 )
-    {
-        if(threadIdx.x<4)
-        {
-            nChess=k+12;
-            int Player;
-            if(k<32){Player=0;}
-            else{Player=1;}
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
-            pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+164]=move;
-        }
-    } 
-    else if( blockIdx.x==17 )
-    {
-        if(threadIdx.x<4)
-        {
-            nChess=k+13;
-            int Player;
-            if(k<32){Player=0;}
-            else{Player=1;}
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
-            pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+168]=move;
-        }
-    } 
-    else if( blockIdx.x==18 )
-    {
-        if(threadIdx.x<4)
-        {
-            nChess=k+14;
-            int Player;
-            if(k<32){Player=0;}
-            else{Player=1;}
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            //pMove = cuda_PawnMoves[Player][nSrc][(tid-160)%4];
-            pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+172]=move;
-        }
-    } 
-    else if( blockIdx.x==19 )
-    {
-        if(threadIdx.x<4)
-        {
-            nChess=k+15;
-            int Player;
-            if(k<32){Player=0;}
-            else{Player=1;}
-            nSrc = cuda_Piece[nChess];// 棋子存在︰nSrc!=0
-            pMove = tex1Dfetch(texture_PawnMoves,Player*256*4+nSrc*4+threadIdx.x);
-            nDst = pMove;
-            WRITE_2_MOVE;
-           cuda_move[threadIdx.x+176]=move;
-        }
-    } 
+    cuda_move[tid]=move; 
 }
 __global__ void cuda_null()
 {
@@ -1259,7 +1071,7 @@ __global__ void cuda_null()
 //呼叫cuda_MoveGen_null
 void call_cudaMoveGen_null(const unsigned int nChess,int Board[256],int Piece[48],unsigned int xBitBoard[16],unsigned int yBitBoard[16],unsigned int * &ChessMove,unsigned short HistoryRecord[65535])
 {
-    cuda_null<<<20,numOfThreads>>>();
+    cuda_null<<<1,numOfThreads>>>();
     cudaThreadSynchronize();
 }
 cudaEvent_t start_timer, stop_timer; 
@@ -1295,7 +1107,6 @@ void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],uns
     cutilSafeCall(cudaMemcpyToSymbol(cuda_yBitBoard,yBitBoard,64));
 
     //檢查核心運行時間
-<<<<<<< .mine
     int testLoop=100000;
     cudaEvent_t start1, stop1; 
     float time1;
@@ -1329,26 +1140,26 @@ void call_cudaMoveGen(const unsigned int nChess,int Board[256],int Piece[48],uns
     cudaEventDestroy( start2 );
     cudaEventDestroy( stop2 );
     printf("time[gpu]: %g ms\n",time2);
-=======
-    //int testLoop=10000;
-    //double t0=(double)clock()/CLOCKS_PER_SEC;
-    //for(int i=0;i<testLoop;i++)
-    //{
-    //cuda_null<<<1,numOfThreads>>>();
-    //cudaThreadSynchronize();
-    //}
-    //t0=((double)clock()/CLOCKS_PER_SEC-t0);
-    //printf("time[null]: %g ms\n",t0*1000);
-    //double t1=(double)clock()/CLOCKS_PER_SEC;
-    //for(int i=0;i<testLoop;i++)
-    //{
-    cudaMoveGen<<<20,32>>>(nChess,cuda_move);
-    //cudaThreadSynchronize();
-    //}
-    //t1=((double)clock()/CLOCKS_PER_SEC-t1);
-    //printf("time[gpu]: %g ms\n",t1*1000);
-    //printf("***warp*** pure time: %g ms\n",(t1-t0)*1000);
->>>>>>> .r15
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
