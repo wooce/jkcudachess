@@ -248,17 +248,11 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
     call_cudaMoveGen(k,Board,Piece,xBitBoard,yBitBoard,ChessMove2,HistoryRecord);
 
     //檢查核心運行時間
-<<<<<<< .mine
     call_cudatimer(0);
     int testLoop=100000;
+
     for(int i=0;i<testLoop;i++)
     {
-=======
-    //int testLoop=10000;
-    //double t_cpu=(double)clock()/CLOCKS_PER_SEC;
-    //for(int i=0;i<testLoop;i++)
-    //{
->>>>>>> .r15
         CChessMove* ChessMove = pGenMove;		//移動的計數器
         unsigned int  move, nSrc, nDst, x, y, nChess;
         unsigned char *pMove;
@@ -267,6 +261,12 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
         // 產生將帥的移動********************************************************************************************
         nChess = k;
         nSrc = Piece[nChess];								// 將帥存在︰nSrc!=0
+
+
+
+
+
+
         {
             pMove = KingMoves[nSrc];
             while( *pMove )
@@ -433,16 +433,10 @@ int CMoveGen::MoveGenerator(const int Player, CChessMove* pGenMove)
         }
         call_cudaMoveGen_null(k,Board,Piece,xBitBoard,yBitBoard,ChessMove2,HistoryRecord);
     }
-<<<<<<< .mine
     float cpu_time=call_cudatimer(1);
     printf("time[cpu]: %g ms\n\n",cpu_time);
+
     //檢查移動計數器
-=======
-    //}
-    //t_cpu=((double)clock()/CLOCKS_PER_SEC-t_cpu);
-    //printf("time[cpu]: %g ms\n",t_cpu*1000);
-    ////檢查移動計數器
->>>>>>> .r15
     //for(int i=0;i<(ChessMove-pGenMove);i++)
     //{
     //    printf("move[%d] = %u\n",i,pGenMove[i]);
@@ -603,7 +597,7 @@ int CMoveGen::CapMoveGen(const int Player, CChessMove* pGenMove)
 				*(ChessMove++) = ((MvvValues[nCaptured] - 1000)<<16) | (nSrc<<8) | nDst;
 		}
 	}	
-    
+
 	return int(ChessMove-pGenMove);
 }
 
